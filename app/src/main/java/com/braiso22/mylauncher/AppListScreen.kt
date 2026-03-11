@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.braiso22.mylauncher.domain.AppRepository
 import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
 import kotlinx.collections.immutable.ImmutableList
@@ -80,8 +81,8 @@ fun AppListScreen(
         apps = loaded
     }
 
-    val favorites by repository.favorites.collectAsState()
-    val blocked by repository.blocked.collectAsState()
+    val favorites by repository.favorites.collectAsStateWithLifecycle()
+    val blocked by repository.blocked.collectAsStateWithLifecycle()
 
     val debouncedQuery = rememberDebouncedValue(searchQuery)
     val filteredApps = remember(debouncedQuery, apps) {
@@ -107,14 +108,13 @@ fun AppListScreen(
 
     contextMenuApp?.let { app ->
         AppContextMenu(
-            app = app,
             isFavorite = app.packageName in favorites,
             isBlocked = app.packageName in blocked,
             onToggleFavorite = {
                 repository.toggleFavorite(app.packageName)
                 contextMenuApp = null
             },
-            onToggleBlocked = {
+            onToggleBlock = {
                 repository.toggleBlocked(app.packageName)
                 contextMenuApp = null
             },
@@ -180,11 +180,10 @@ private fun launchApp(context: Context, app: AppInfo) {
 
 @Composable
 fun AppContextMenu(
-    app: AppInfo,
     isFavorite: Boolean,
     isBlocked: Boolean,
     onToggleFavorite: () -> Unit,
-    onToggleBlocked: () -> Unit,
+    onToggleBlock: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     DropdownMenu(
@@ -205,7 +204,7 @@ fun AppContextMenu(
         )
         DropdownMenuItem(
             text = { Text(if (isBlocked) "Desbloquear app" else "Bloquear app") },
-            onClick = onToggleBlocked,
+            onClick = onToggleBlock,
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Lock,
