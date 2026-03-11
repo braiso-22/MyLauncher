@@ -4,9 +4,12 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,6 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.braiso22.mylauncher.domain.AppRepository
 import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
 import kotlinx.collections.immutable.ImmutableList
@@ -52,14 +56,14 @@ fun Greeting(
         allApps = withContext(Dispatchers.IO) { getInstalledApps(context) }
     }
 
-    val favorites by repository.favorites.collectAsState()
+    val favorites by repository.favorites.collectAsStateWithLifecycle()
     val favoriteApps = remember(favorites, allApps) {
         allApps.filter { it.packageName in favorites }
     }
 
     // App cuyo dialog de bloqueo se muestra
     var blockedDialogApp by remember { mutableStateOf<AppInfo?>(null) }
-    val blocked by repository.blocked.collectAsState()
+    val blocked by repository.blocked.collectAsStateWithLifecycle()
 
     blockedDialogApp?.let { app ->
         BlockedAppDialog(
@@ -76,38 +80,37 @@ fun Greeting(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Reloj centrado
-        Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.Center,
+        // Reloj en la parte superior
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 48.dp, bottom = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = currentTime,
-                    fontSize = 64.sp,
-                    fontWeight = FontWeight.Light,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = currentDate,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                )
-            }
+            Text(
+                text = currentTime,
+                fontSize = 64.sp,
+                fontWeight = FontWeight.Light,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = currentDate,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+            )
         }
 
-        // Favoritos en la parte inferior
+        // Favoritos ocupando el resto del espacio
         if (favoriteApps.isNotEmpty()) {
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            LazyRow(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .weight(1f)
                     .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp),
             ) {
                 items(favoriteApps, key = { it.packageName }) { app ->
