@@ -23,6 +23,10 @@ fun LauncherPager(modifier: Modifier = Modifier) {
 
     var query by remember { mutableStateOf("") }
 
+    LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage != 1) query = ""
+    }
+
     HorizontalPager(
         state = pagerState,
         modifier = modifier.fillMaxSize(),
@@ -34,6 +38,7 @@ fun LauncherPager(modifier: Modifier = Modifier) {
                 searchQuery = query,
                 onUpdateQuery = { query = it },
                 repository = repository,
+                isActive = pagerState.currentPage == 1,
                 modifier = Modifier,
             )
         }

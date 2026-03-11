@@ -16,7 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -69,6 +72,7 @@ fun AppListScreen(
     onUpdateQuery: (String) -> Unit,
     context: Context,
     repository: AppRepository,
+    isActive: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var apps by remember { mutableStateOf<ImmutableList<AppInfo>>(persistentListOf()) }
@@ -94,6 +98,14 @@ fun AppListScreen(
     var blockedDialogApp by remember { mutableStateOf<AppInfo?>(null) }
     // App whose context menu is shown
     var contextMenuApp by remember { mutableStateOf<AppInfo?>(null) }
+
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(isActive) {
+        if (isActive) focusRequester.requestFocus()
+        else focusManager.clearFocus()
+    }
 
     blockedDialogApp?.let { app ->
         BlockedAppDialog(
@@ -131,7 +143,8 @@ fun AppListScreen(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
+                .padding(vertical = 8.dp)
+                .focusRequester(focusRequester),
             placeholder = { Text("Search apps") },
         )
         if (apps.isEmpty()) {
