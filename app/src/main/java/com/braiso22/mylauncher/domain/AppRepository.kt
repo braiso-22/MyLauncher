@@ -12,6 +12,13 @@ class AppRepository {
     private val _blocked = MutableStateFlow<Set<String>>(emptySet())
     val blocked: StateFlow<Set<String>> = _blocked.asStateFlow()
 
+    private val _lastOpenedPackage = MutableStateFlow<String?>(null)
+    val lastOpenedPackage: StateFlow<String?> = _lastOpenedPackage.asStateFlow()
+
+    fun setLastOpened(packageName: String) {
+        _lastOpenedPackage.value = packageName
+    }
+
     fun toggleFavorite(packageName: String) {
         _favorites.update { current ->
             if (packageName in current) current - packageName else current + packageName

@@ -87,6 +87,10 @@ fun AppListScreen(
 
     val favorites by repository.favorites.collectAsStateWithLifecycle()
     val blocked by repository.blocked.collectAsStateWithLifecycle()
+    val lastOpenedPackage by repository.lastOpenedPackage.collectAsStateWithLifecycle()
+    val lastOpenedApp = remember(lastOpenedPackage, apps) {
+        lastOpenedPackage?.let { pkg -> apps.find { it.packageName == pkg } }
+    }
 
     val debouncedQuery = rememberDebouncedValue(searchQuery)
     val filteredApps = remember(debouncedQuery, apps) {
@@ -112,7 +116,7 @@ fun AppListScreen(
             appName = app.label,
             onEnter = {
                 blockedDialogApp = null
-                launchApp(context, app)
+                launchApp(context, app, repository)
             },
             onDismiss = { blockedDialogApp = null },
         )
@@ -159,6 +163,23 @@ fun AppListScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                lastOpenedApp?.let { app ->
+                    item(key = "last_opened", contentType = "contentType1") {
+                        LastOpenedAppItem(
+                            app = app,
+                            isBlocked = app.packageName in blocked,
+                            onClick = {
+                                if (app.packageName in blocked) {
+                                    blockedDialogApp = app
+                                } else {
+                                    launchApp(context, app, repository)
+                                }
+                            },
+                            onLongClick = { contextMenuApp = app },
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                }
                 items(filteredApps, key = { it.packageName }) { app ->
                     AppItem(
                         app = app,
@@ -168,7 +189,7 @@ fun AppListScreen(
                             if (app.packageName in blocked) {
                                 blockedDialogApp = app
                             } else {
-                                launchApp(context, app)
+                                launchApp(context, app, repository)
                             }
                         },
                         onLongClick = { contextMenuApp = app },
@@ -179,7 +200,8 @@ fun AppListScreen(
     }
 }
 
-private fun launchApp(context: Context, app: AppInfo) {
+private fun launchApp(context: Context, app: AppInfo, repository: AppRepository) {
+    repository.setLastOpened(app.packageName)
     val launchIntent = Intent(Intent.ACTION_MAIN).apply {
         addCategory(Intent.CATEGORY_LAUNCHER)
         setClassName(app.packageName, app.activityName)
@@ -244,6 +266,48 @@ fun AppContextMenu(
         },
         modifier = modifier
     )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun LastOpenedAppItem(
+    app: AppInfo,
+    isBlocked: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Última app abierta",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = app.label,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isBlocked)
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                else
+                    MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
