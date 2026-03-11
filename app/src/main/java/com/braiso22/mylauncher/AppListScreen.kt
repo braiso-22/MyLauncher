@@ -24,12 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.braiso22.mylauncher.domain.AppRepository
 import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -71,9 +67,14 @@ fun AppListScreen(
     searchQuery: String,
     onUpdateQuery: (String) -> Unit,
     context: Context,
-    repository: AppRepository,
-    isActive: Boolean = false,
+    favorites: ImmutableSet<String>,
+    blocked: ImmutableSet<String>,
+    lastOpenedApp: AppInfo?,
+    onToggleFavorite: (String) -> Unit,
+    onToggleBlock: (String) -> Unit,
+    onLaunchApp: (AppInfo) -> Unit,
     modifier: Modifier = Modifier,
+    isActive: Boolean = false,
 ) {
     var apps by remember { mutableStateOf<ImmutableList<AppInfo>>(persistentListOf()) }
 
@@ -85,11 +86,9 @@ fun AppListScreen(
         apps = loaded
     }
 
-    val favorites by repository.favorites.collectAsStateWithLifecycle()
-    val blocked by repository.blocked.collectAsStateWithLifecycle()
-    val lastOpenedPackage by repository.lastOpenedPackage.collectAsStateWithLifecycle()
-    val lastOpenedApp = remember(lastOpenedPackage, apps) {
-        lastOpenedPackage?.let { pkg -> apps.find { it.packageName == pkg } }
+    val resolvedLastOpenedApp = remember(lastOpenedApp, apps) {
+        lastOpenedApp ?: return@remember null
+        apps.find { it.packageName == lastOpenedApp.packageName } ?: lastOpenedApp
     }
 
     val debouncedQuery = rememberDebouncedValue(searchQuery)
@@ -116,7 +115,7 @@ fun AppListScreen(
             appName = app.label,
             onEnter = {
                 blockedDialogApp = null
-                launchApp(context, app, repository)
+                onLaunchApp(app)
             },
             onDismiss = { blockedDialogApp = null },
         )
@@ -127,11 +126,11 @@ fun AppListScreen(
             isFavorite = app.packageName in favorites,
             isBlocked = app.packageName in blocked,
             onToggleFavorite = {
-                repository.toggleFavorite(app.packageName)
+                onToggleFavorite(app.packageName)
                 contextMenuApp = null
             },
             onToggleBlock = {
-                repository.toggleBlocked(app.packageName)
+                onToggleBlock(app.packageName)
                 contextMenuApp = null
             },
             onDismiss = { contextMenuApp = null },
@@ -163,7 +162,7 @@ fun AppListScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                lastOpenedApp?.let { app ->
+                resolvedLastOpenedApp?.let { app ->
                     item(key = "last_opened", contentType = "contentType1") {
                         LastOpenedAppItem(
                             app = app,
@@ -172,7 +171,7 @@ fun AppListScreen(
                                 if (app.packageName in blocked) {
                                     blockedDialogApp = app
                                 } else {
-                                    launchApp(context, app, repository)
+                                    onLaunchApp(app)
                                 }
                             },
                             onLongClick = { contextMenuApp = app },
@@ -180,7 +179,10 @@ fun AppListScreen(
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
                 }
-                items(filteredApps, key = { it.packageName }) { app ->
+                items(
+                    items = filteredApps,
+                    key = { it.packageName },
+                    contentType = { _ -> "contentType2" }) { app ->
                     AppItem(
                         app = app,
                         isFavorite = app.packageName in favorites,
@@ -189,7 +191,7 @@ fun AppListScreen(
                             if (app.packageName in blocked) {
                                 blockedDialogApp = app
                             } else {
-                                launchApp(context, app, repository)
+                                onLaunchApp(app)
                             }
                         },
                         onLongClick = { contextMenuApp = app },
@@ -198,16 +200,6 @@ fun AppListScreen(
             }
         }
     }
-}
-
-private fun launchApp(context: Context, app: AppInfo, repository: AppRepository) {
-    repository.setLastOpened(app.packageName)
-    val launchIntent = Intent(Intent.ACTION_MAIN).apply {
-        addCategory(Intent.CATEGORY_LAUNCHER)
-        setClassName(app.packageName, app.activityName)
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    context.startActivity(launchIntent)
 }
 
 @Composable
@@ -362,8 +354,13 @@ fun AppListScreenPreview() {
                 searchQuery = "",
                 onUpdateQuery = {},
                 context = LocalContext.current,
-                repository = AppRepository(),
-                modifier = Modifier.padding(padding)
+                favorites = persistentSetOf<String>(),
+                blocked = persistentSetOf<String>(),
+                lastOpenedApp = null,
+                onToggleFavorite = {},
+                onToggleBlock = {},
+                onLaunchApp = {},
+                modifier = Modifier.padding(padding),
             )
         }
     }

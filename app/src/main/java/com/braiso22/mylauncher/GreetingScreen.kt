@@ -168,17 +168,3 @@ fun getCurrentTime(): String =
 
 fun getCurrentDate(): String =
     SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date())
-
-@Suppress("ModifierRequired")
-@PreviewLightDark
-@Composable
-fun GreetingPreview() {
-    MyLauncherTheme {
-        Scaffold { padding ->
-            Greeting(
-                repository = AppRepository(),
-                modifier = Modifier.padding(padding),
-            )
-        }
-    }
-}
