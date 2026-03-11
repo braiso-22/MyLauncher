@@ -49,7 +49,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.accompanist.drawablepainter)
+    implementation(libs.androidx.material.icons.extended)
     implementation(libs.kotlinx.collections.immutable)
     implementation(libs.androidx.datastore.preferences)
     testImplementation(libs.junit)
