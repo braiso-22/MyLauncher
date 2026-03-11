@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -142,7 +143,13 @@ fun AppListScreen(
             value = searchQuery,
             onValueChange = onUpdateQuery,
             trailingIcon = {
-                Icon(Icons.Default.Search, contentDescription = null)
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { onUpdateQuery("") }) {
+                        Icon(Icons.Default.Close, contentDescription = "Clear")
+                    }
+                }else {
+                    Icon(Icons.Default.Search, contentDescription = "Search")
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
