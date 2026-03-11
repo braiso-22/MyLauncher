@@ -159,9 +159,6 @@ fun AppListScreen(
                             }
                         },
                         onLongClick = { contextMenuApp = app },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp, horizontal = 8.dp)
                     )
                 }
             }
@@ -185,36 +182,55 @@ fun AppContextMenu(
     onToggleFavorite: () -> Unit,
     onToggleBlock: () -> Unit,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    DropdownMenu(
-        expanded = true,
+    AlertDialog(
         onDismissRequest = onDismiss,
-    ) {
-        DropdownMenuItem(
-            text = { Text(if (isFavorite) "Quitar de favoritos" else "Añadir a favoritos") },
-            onClick = onToggleFavorite,
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    tint = if (isFavorite) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurface,
-                )
+        title = { Text("Opciones de la app") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = if (isFavorite) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isFavorite) "Quitar de favoritos" else "Añadir a favoritos",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                TextButton(
+                    onClick = onToggleBlock,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = if (isBlocked) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isBlocked) "Desbloquear app" else "Bloquear app",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
-        )
-        DropdownMenuItem(
-            text = { Text(if (isBlocked) "Desbloquear app" else "Bloquear app") },
-            onClick = onToggleBlock,
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = null,
-                    tint = if (isBlocked) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurface,
-                )
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
             }
-        )
-    }
+        },
+        modifier = modifier
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -228,10 +244,13 @@ fun AppItem(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.combinedClickable(
-            onClick = onClick,
-            onLongClick = onLongClick,
-        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            )
+            .padding(vertical = 12.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
