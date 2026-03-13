@@ -18,7 +18,7 @@ import kotlinx.collections.immutable.toImmutableSet
 @Composable
 fun LauncherPager(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val repository = remember { AppRepository(context) }
+    val repository = remember { AppRepository.getInstance(context) }
 
     val favorites by repository.favorites.collectAsStateWithLifecycle()
     val blocked by repository.blocked.collectAsStateWithLifecycle()
@@ -59,7 +59,8 @@ fun LauncherPager(modifier: Modifier = Modifier) {
                 blocked = blocked.toImmutableSet(),
                 lastOpenedApp = lastOpenedApp,
                 onToggleFavorite = { repository.toggleFavorite(it) },
-                onToggleBlock = { repository.toggleBlocked(it) },
+                onBlockApp = { pkg, minutes -> repository.blockApp(pkg, minutes) },
+                onUnblockApp = { pkg -> repository.unblockApp(pkg) },
                 onLaunchApp = { app ->
                     repository.setLastOpened(app.packageName)
                     val launchIntent = Intent(Intent.ACTION_MAIN).apply {
@@ -68,6 +69,9 @@ fun LauncherPager(modifier: Modifier = Modifier) {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(launchIntent)
+                },
+                onBlockedAppEntered = { pkg ->
+                    repository.markBlockedAppOpened(pkg)
                 },
                 isActive = pagerState.currentPage == 1,
                 modifier = Modifier,

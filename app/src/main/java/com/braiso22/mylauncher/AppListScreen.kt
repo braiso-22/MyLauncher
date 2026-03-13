@@ -72,8 +72,10 @@ fun AppListScreen(
     blocked: ImmutableSet<String>,
     lastOpenedApp: AppInfo?,
     onToggleFavorite: (String) -> Unit,
-    onToggleBlock: (String) -> Unit,
+    onBlockApp: (packageName: String, minutes: Int) -> Unit,
+    onUnblockApp: (packageName: String) -> Unit,
     onLaunchApp: (AppInfo) -> Unit,
+    onBlockedAppEntered: (packageName: String) -> Unit,
     modifier: Modifier = Modifier,
     isActive: Boolean = false,
 ) {
@@ -102,6 +104,8 @@ fun AppListScreen(
     var blockedDialogApp by remember { mutableStateOf<AppInfo?>(null) }
     // App whose context menu is shown
     var contextMenuApp by remember { mutableStateOf<AppInfo?>(null) }
+    // App for which the block time picker is shown
+    var blockTimePickerApp by remember { mutableStateOf<AppInfo?>(null) }
 
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -116,9 +120,21 @@ fun AppListScreen(
             appName = app.label,
             onEnter = {
                 blockedDialogApp = null
+                onBlockedAppEntered(app.packageName)
                 onLaunchApp(app)
             },
             onDismiss = { blockedDialogApp = null },
+        )
+    }
+
+    blockTimePickerApp?.let { app ->
+        BlockTimePickerDialog(
+            appName = app.label,
+            onConfirm = { minutes ->
+                onBlockApp(app.packageName, minutes)
+                blockTimePickerApp = null
+            },
+            onDismiss = { blockTimePickerApp = null },
         )
     }
 
@@ -131,8 +147,12 @@ fun AppListScreen(
                 contextMenuApp = null
             },
             onToggleBlock = {
-                onToggleBlock(app.packageName)
                 contextMenuApp = null
+                if (app.packageName in blocked) {
+                    onUnblockApp(app.packageName)
+                } else {
+                    blockTimePickerApp = app
+                }
             },
             onDismiss = { contextMenuApp = null },
         )
@@ -365,8 +385,10 @@ fun AppListScreenPreview() {
                 blocked = persistentSetOf<String>(),
                 lastOpenedApp = null,
                 onToggleFavorite = {},
-                onToggleBlock = {},
+                onBlockApp = { _, _ -> },
+                onUnblockApp = {},
                 onLaunchApp = {},
+                onBlockedAppEntered = {},
                 modifier = Modifier.padding(padding),
             )
         }

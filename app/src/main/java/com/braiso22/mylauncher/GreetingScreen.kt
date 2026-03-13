@@ -70,6 +70,7 @@ fun Greeting(
             appName = app.label,
             onEnter = {
                 blockedDialogApp = null
+                repository.markBlockedAppOpened(app.packageName)
                 launchFavoriteApp(context, app)
             },
             onDismiss = { blockedDialogApp = null },
