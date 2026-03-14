@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,12 +16,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.braiso22.mylauncher.domain.AppRepository
+import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -55,12 +59,13 @@ fun Greeting(
 
     val favorites by repository.favorites.collectAsStateWithLifecycle()
     val favoriteApps = remember(favorites, allApps) {
-        allApps.filter { it.packageName in favorites }
+        allApps.filter { it.packageName in favorites }.toImmutableList()
     }
+
+    val blocked by repository.blocked.collectAsStateWithLifecycle()
 
     // App cuyo dialog de bloqueo se muestra
     var blockedDialogApp by remember { mutableStateOf<AppInfo?>(null) }
-    val blocked by repository.blocked.collectAsStateWithLifecycle()
 
     blockedDialogApp?.let { app ->
         BlockedAppDialog(
@@ -74,6 +79,29 @@ fun Greeting(
         )
     }
 
+    GreetingContent(
+        favoriteApps = favoriteApps,
+        currentTime = currentTime,
+        currentDate = currentDate,
+        onAppClick = { app ->
+            if (app.packageName in blocked) {
+                blockedDialogApp = app
+            } else {
+                launchFavoriteApp(context, app)
+            }
+        },
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun GreetingContent(
+    favoriteApps: ImmutableList<AppInfo>,
+    currentTime: String,
+    currentDate: String,
+    onAppClick: (AppInfo) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -114,13 +142,7 @@ fun Greeting(
                 items(favoriteApps, key = { it.packageName }) { app ->
                     FavoriteAppItem(
                         app = app,
-                        onClick = {
-                            if (app.packageName in blocked) {
-                                blockedDialogApp = app
-                            } else {
-                                launchFavoriteApp(context, app)
-                            }
-                        },
+                        onClick = { onAppClick(app) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -167,3 +189,26 @@ fun getCurrentTime(): String =
 
 fun getCurrentDate(): String =
     SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date())
+
+@PreviewLightDark
+@Composable
+private fun GreetingContentPreview() {
+    val sampleApps = listOf(
+        AppInfo(label = "WhatsApp", packageName = "com.whatsapp", activityName = "com.whatsapp.Main"),
+        AppInfo(label = "Chrome", packageName = "com.android.chrome", activityName = "com.google.android.apps.chrome.Main"),
+        AppInfo(label = "Spotify", packageName = "com.spotify.music", activityName = "com.spotify.MainActivity"),
+        AppInfo(label = "Maps", packageName = "com.google.android.apps.maps", activityName = "com.google.android.maps.MapsActivity"),
+    ).toImmutableList()
+
+    MyLauncherTheme {
+        Scaffold { paddingValues ->
+            GreetingContent(
+                favoriteApps = sampleApps,
+                currentTime = "14:30",
+                currentDate = "viernes, 14 marzo",
+                onAppClick = {},
+                modifier = Modifier.padding(paddingValues)
+            )
+        }
+    }
+}

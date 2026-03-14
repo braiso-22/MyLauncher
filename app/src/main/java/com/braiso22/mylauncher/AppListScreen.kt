@@ -20,12 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.braiso22.mylauncher.domain.AppRepository
 import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.Dispatchers
@@ -64,11 +65,88 @@ fun rememberDebouncedValue(value: String, delayMillis: Long = 300L): String {
     return debouncedValue
 }
 
+// ── Wrapper ──────────────────────────────────────────────────────────────────
+
 @Composable
 fun AppListScreen(
+    repository: AppRepository,
+    context: Context,
+    isActive: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    var allApps by remember { mutableStateOf<ImmutableList<AppInfo>>(persistentListOf()) }
+
+    @Suppress("EffectKeys")
+    LaunchedEffect(Unit) {
+        allApps = withContext(Dispatchers.IO) { getInstalledApps(context) }
+    }
+
+    val favorites by repository.favorites.collectAsStateWithLifecycle()
+    val blocked by repository.blocked.collectAsStateWithLifecycle()
+    val lastOpenedPackage by repository.lastOpenedPackage.collectAsStateWithLifecycle()
+
+    val lastOpenedApp = remember(lastOpenedPackage, allApps) {
+        lastOpenedPackage?.let { pkg -> allApps.find { it.packageName == pkg } }
+    }
+
+    var query by remember { mutableStateOf("") }
+    var showingBlocked by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isActive) {
+        if (!isActive) {
+            query = ""
+            showingBlocked = false
+        }
+    }
+
+    val debouncedQuery = rememberDebouncedValue(query)
+
+    val filteredApps = remember(debouncedQuery, allApps, blocked, showingBlocked) {
+        val base = if (showingBlocked) {
+            allApps.filter { it.packageName in blocked }
+        } else {
+            allApps.filter { it.packageName !in blocked }
+        }
+        if (debouncedQuery.isBlank()) base.toImmutableList()
+        else base.filter { it.label.contains(debouncedQuery, ignoreCase = true) }.toImmutableList()
+    }
+
+    AppListScreenContent(
+        searchQuery = query,
+        onUpdateQuery = { query = it },
+        showingBlocked = showingBlocked,
+        onToggleShowBlocked = { showingBlocked = !showingBlocked },
+        filteredApps = filteredApps,
+        favorites = favorites.toImmutableSet(),
+        blocked = blocked.toImmutableSet(),
+        lastOpenedApp = lastOpenedApp,
+        onToggleFavorite = { repository.toggleFavorite(it) },
+        onBlockApp = { pkg, minutes -> repository.blockApp(pkg, minutes) },
+        onUnblockApp = { pkg -> repository.unblockApp(pkg) },
+        onLaunchApp = { app ->
+            repository.setLastOpened(app.packageName)
+            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setClassName(app.packageName, app.activityName)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(launchIntent)
+        },
+        onBlockedAppEntered = { pkg -> repository.markBlockedAppOpened(pkg) },
+        isActive = isActive,
+        modifier = modifier,
+    )
+}
+
+// ── Contenido puro ───────────────────────────────────────────────────────────
+
+@Composable
+fun AppListScreenContent(
     searchQuery: String,
     onUpdateQuery: (String) -> Unit,
-    context: Context,
+    showingBlocked: Boolean,
+    onToggleShowBlocked: () -> Unit,
+    filteredApps: ImmutableList<AppInfo>,
     favorites: ImmutableSet<String>,
     blocked: ImmutableSet<String>,
     lastOpenedApp: AppInfo?,
@@ -80,40 +158,6 @@ fun AppListScreen(
     modifier: Modifier = Modifier,
     isActive: Boolean = false,
 ) {
-    var apps by remember { mutableStateOf<ImmutableList<AppInfo>>(persistentListOf()) }
-
-    @Suppress("EffectKeys")
-    LaunchedEffect(Unit) {
-        val loaded = withContext(Dispatchers.IO) {
-            getInstalledApps(context)
-        }
-        apps = loaded
-    }
-
-    val resolvedLastOpenedApp = remember(lastOpenedApp, apps) {
-        lastOpenedApp ?: return@remember null
-        apps.find { it.packageName == lastOpenedApp.packageName } ?: lastOpenedApp
-    }
-
-    val debouncedQuery = rememberDebouncedValue(searchQuery)
-
-    // Whether we're showing the blocked apps list
-    var showingBlocked by remember { mutableStateOf(false) }
-
-    val filteredApps = remember(debouncedQuery, apps, blocked, showingBlocked) {
-        if (showingBlocked) {
-            // Show only blocked apps
-            val list = apps.filter { it.packageName in blocked }
-            if (debouncedQuery.isBlank()) list
-            else list.filter { it.label.contains(debouncedQuery, ignoreCase = true) }
-        } else {
-            // Show only non-blocked apps
-            val list = apps.filter { it.packageName !in blocked }
-            if (debouncedQuery.isBlank()) list
-            else list.filter { it.label.contains(debouncedQuery, ignoreCase = true) }
-        }
-    }
-
     // App whose blocked dialog is currently shown
     var blockedDialogApp by remember { mutableStateOf<AppInfo?>(null) }
     // App whose context menu is shown
@@ -181,7 +225,7 @@ fun AppListScreen(
                     IconButton(onClick = { onUpdateQuery("") }) {
                         Icon(Icons.Default.Close, contentDescription = "Clear")
                     }
-                }else {
+                } else {
                     Icon(Icons.Default.Search, contentDescription = "Search")
                 }
             },
@@ -196,7 +240,7 @@ fun AppListScreen(
         if (blocked.isNotEmpty()) {
             FilterChip(
                 selected = showingBlocked,
-                onClick = { showingBlocked = !showingBlocked },
+                onClick = onToggleShowBlocked,
                 label = {
                     Text(
                         if (showingBlocked) "Ver todas las apps"
@@ -214,62 +258,54 @@ fun AppListScreen(
             )
         }
 
-        if (apps.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                // Only show last opened app when NOT in blocked view and it's not blocked
-                if (!showingBlocked) {
-                    resolvedLastOpenedApp?.let { app ->
-                        if (app.packageName !in blocked) {
-                            item(key = "last_opened", contentType = "contentType1") {
-                                LastOpenedAppItem(
-                                    app = app,
-                                    isBlocked = false,
-                                    onClick = { onLaunchApp(app) },
-                                    onLongClick = { contextMenuApp = app },
-                                )
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                            }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            // Only show last opened app when NOT in blocked view and it's not blocked
+            if (!showingBlocked) {
+                lastOpenedApp?.let { app ->
+                    if (app.packageName !in blocked) {
+                        item(key = "last_opened", contentType = "contentType1") {
+                            LastOpenedAppItem(
+                                app = app,
+                                isBlocked = false,
+                                onClick = { onLaunchApp(app) },
+                                onLongClick = { contextMenuApp = app },
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         }
                     }
                 }
-                items(
-                    items = filteredApps,
-                    key = { it.packageName },
-                    contentType = { _ -> "contentType2" }) { app ->
-                    if (showingBlocked) {
-                        // In blocked view: tap opens blocked dialog, long press for context menu
-                        AppItem(
-                            app = app,
-                            isFavorite = app.packageName in favorites,
-                            isBlocked = true,
-                            onClick = { blockedDialogApp = app },
-                            onLongClick = { contextMenuApp = app },
-                        )
-                    } else {
-                        // Normal view: only non-blocked apps
-                        AppItem(
-                            app = app,
-                            isFavorite = app.packageName in favorites,
-                            isBlocked = false,
-                            onClick = { onLaunchApp(app) },
-                            onLongClick = { contextMenuApp = app },
-                        )
-                    }
+            }
+            items(
+                items = filteredApps,
+                key = { it.packageName },
+                contentType = { _ -> "contentType2" },
+            ) { app ->
+                if (showingBlocked) {
+                    AppItem(
+                        app = app,
+                        isFavorite = app.packageName in favorites,
+                        isBlocked = true,
+                        onClick = { blockedDialogApp = app },
+                        onLongClick = { contextMenuApp = app },
+                    )
+                } else {
+                    AppItem(
+                        app = app,
+                        isFavorite = app.packageName in favorites,
+                        isBlocked = false,
+                        onClick = { onLaunchApp(app) },
+                        onLongClick = { contextMenuApp = app },
+                    )
                 }
             }
         }
     }
 }
+
+// ── Componentes reutilizables ─────────────────────────────────────────────────
 
 @Composable
 fun AppContextMenu(
@@ -413,19 +449,36 @@ fun AppItem(
     }
 }
 
+// ── Previews ──────────────────────────────────────────────────────────────────
+
 @Suppress("ModifierRequired")
 @PreviewLightDark
 @Composable
-fun AppListScreenPreview() {
+fun AppListScreenContentPreview() {
+    val sampleFavorites = persistentSetOf("com.android.chrome")
+    val sampleBlocked = persistentSetOf("com.instagram.android")
+    val sampleApps = persistentListOf(
+        AppInfo("Chrome", "com.android.chrome", "com.google.android.apps.chrome.Main"),
+        AppInfo("Spotify", "com.spotify.music", "com.spotify.MainActivity"),
+        AppInfo("Instagram (bloqueada)", "com.instagram.android", "com.instagram.android.MainActivity"),
+        AppInfo("WhatsApp", "com.whatsapp", "com.whatsapp.Main"),
+    )
+    val lastOpened = AppInfo(
+        label = "Chrome",
+        packageName = "com.android.chrome",
+        activityName = "com.google.android.apps.chrome.Main",
+    )
     MyLauncherTheme {
         Scaffold { padding ->
-            AppListScreen(
+            AppListScreenContent(
                 searchQuery = "",
                 onUpdateQuery = {},
-                context = LocalContext.current,
-                favorites = persistentSetOf<String>(),
-                blocked = persistentSetOf<String>(),
-                lastOpenedApp = null,
+                showingBlocked = false,
+                onToggleShowBlocked = {},
+                filteredApps = sampleApps,
+                favorites = sampleFavorites,
+                blocked = sampleBlocked,
+                lastOpenedApp = lastOpened,
                 onToggleFavorite = {},
                 onBlockApp = { _, _ -> },
                 onUnblockApp = {},
