@@ -10,6 +10,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.braiso22.mylauncher.domain.AppRepository
 import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
@@ -40,6 +42,13 @@ fun LauncherPager(modifier: Modifier = Modifier) {
     )
 
     var query by remember { mutableStateOf("") }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (pagerState.currentPage != 0) {
+            pagerState.requestScrollToPage(0)
+        }
+        query = ""
+    }
 
     LaunchedEffect(pagerState.currentPage) {
         if (pagerState.currentPage != 1) query = ""
