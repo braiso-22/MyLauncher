@@ -1,9 +1,10 @@
+<img alt="MyLauncher Header" src="./header_image.png" width="1920" height="1080"/>
+
 # 📱 MyLauncher
 
 > [!TIP]
 > **[Leer en español 🇪🇸](README_es.md)**
 
-![MyLauncher Header](header_image_url_placeholder.png)
 
 **MyLauncher** is a minimalist Android launcher designed to reclaim your focus and reduce screen time. Built with **Jetpack Compose**, it strips away the visual noise of traditional launchers, replacing icons with a clean, text-based interface.
 
