@@ -7,12 +7,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
 import kotlinx.coroutines.delay
 
 private const val BLOCK_DELAY_SECONDS = 10
+private const val CAPTCHA_LENGTH = 6
+
+private fun generateRandomCode(): String {
+    val chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
+    return (1..CAPTCHA_LENGTH).map { chars.random() }.joinToString("")
+}
 
 @Suppress("ModifierRequired")
 @Composable
@@ -23,6 +33,10 @@ fun BlockedAppDialog(
 ) {
     var progress by remember { mutableFloatStateOf(0f) }
     var ready by remember { mutableStateOf(false) }
+    val captchaCode by remember { mutableStateOf(generateRandomCode()) }
+    var userInput by remember { mutableStateOf("") }
+
+    val inputMatches = userInput == captchaCode
 
     @Suppress("EffectKeys")
     LaunchedEffect(Unit) {
@@ -50,17 +64,38 @@ fun BlockedAppDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(text = "Esta app está bloqueada. Espera para poder abrirla.")
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                if (!ready) {
+                    Text(text = "Esta app está bloqueada. Espera para poder abrirla.")
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    Text(text = "Escribe el siguiente código para continuar:")
+                    Text(
+                        text = captchaCode,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 4.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = userInput,
+                        onValueChange = { userInput = it },
+                        singleLine = true,
+                        label = { Text("Código") },
+                        isError = userInput.isNotEmpty() && !inputMatches,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = onEnter,
-                enabled = ready,
+                enabled = ready && inputMatches,
             ) {
                 Text("Entrar")
             }

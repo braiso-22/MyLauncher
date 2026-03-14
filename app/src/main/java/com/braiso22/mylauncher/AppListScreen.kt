@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -95,9 +96,22 @@ fun AppListScreen(
     }
 
     val debouncedQuery = rememberDebouncedValue(searchQuery)
-    val filteredApps = remember(debouncedQuery, apps) {
-        if (debouncedQuery.isBlank()) apps
-        else apps.filter { it.label.contains(debouncedQuery, ignoreCase = true) }
+
+    // Whether we're showing the blocked apps list
+    var showingBlocked by remember { mutableStateOf(false) }
+
+    val filteredApps = remember(debouncedQuery, apps, blocked, showingBlocked) {
+        if (showingBlocked) {
+            // Show only blocked apps
+            val list = apps.filter { it.packageName in blocked }
+            if (debouncedQuery.isBlank()) list
+            else list.filter { it.label.contains(debouncedQuery, ignoreCase = true) }
+        } else {
+            // Show only non-blocked apps
+            val list = apps.filter { it.packageName !in blocked }
+            if (debouncedQuery.isBlank()) list
+            else list.filter { it.label.contains(debouncedQuery, ignoreCase = true) }
+        }
     }
 
     // App whose blocked dialog is currently shown
@@ -177,6 +191,29 @@ fun AppListScreen(
                 .focusRequester(focusRequester),
             placeholder = { Text("Search apps") },
         )
+
+        // Toggle button for blocked apps
+        if (blocked.isNotEmpty()) {
+            FilterChip(
+                selected = showingBlocked,
+                onClick = { showingBlocked = !showingBlocked },
+                label = {
+                    Text(
+                        if (showingBlocked) "Ver todas las apps"
+                        else "Apps bloqueadas (${blocked.size})"
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = if (showingBlocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                },
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
+
         if (apps.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -189,40 +226,45 @@ fun AppListScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                resolvedLastOpenedApp?.let { app ->
-                    item(key = "last_opened", contentType = "contentType1") {
-                        LastOpenedAppItem(
-                            app = app,
-                            isBlocked = app.packageName in blocked,
-                            onClick = {
-                                if (app.packageName in blocked) {
-                                    blockedDialogApp = app
-                                } else {
-                                    onLaunchApp(app)
-                                }
-                            },
-                            onLongClick = { contextMenuApp = app },
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                // Only show last opened app when NOT in blocked view and it's not blocked
+                if (!showingBlocked) {
+                    resolvedLastOpenedApp?.let { app ->
+                        if (app.packageName !in blocked) {
+                            item(key = "last_opened", contentType = "contentType1") {
+                                LastOpenedAppItem(
+                                    app = app,
+                                    isBlocked = false,
+                                    onClick = { onLaunchApp(app) },
+                                    onLongClick = { contextMenuApp = app },
+                                )
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            }
+                        }
                     }
                 }
                 items(
                     items = filteredApps,
                     key = { it.packageName },
                     contentType = { _ -> "contentType2" }) { app ->
-                    AppItem(
-                        app = app,
-                        isFavorite = app.packageName in favorites,
-                        isBlocked = app.packageName in blocked,
-                        onClick = {
-                            if (app.packageName in blocked) {
-                                blockedDialogApp = app
-                            } else {
-                                onLaunchApp(app)
-                            }
-                        },
-                        onLongClick = { contextMenuApp = app },
-                    )
+                    if (showingBlocked) {
+                        // In blocked view: tap opens blocked dialog, long press for context menu
+                        AppItem(
+                            app = app,
+                            isFavorite = app.packageName in favorites,
+                            isBlocked = true,
+                            onClick = { blockedDialogApp = app },
+                            onLongClick = { contextMenuApp = app },
+                        )
+                    } else {
+                        // Normal view: only non-blocked apps
+                        AppItem(
+                            app = app,
+                            isFavorite = app.packageName in favorites,
+                            isBlocked = false,
+                            onClick = { onLaunchApp(app) },
+                            onLongClick = { contextMenuApp = app },
+                        )
+                    }
                 }
             }
         }
