@@ -109,7 +109,18 @@ class BlockedAppMonitorService : Service() {
         val blockedApps = repository.blocked.value
         val blockTimes = repository.blockTimes.value
 
-        Log.d(TAG, "Check: tracked=$trackedPkg, openedAt=$openedAt, blocked=$blockedApps, times=$blockTimes")
+        // Always detect the current foreground app
+        val foreground = ForegroundAppDetector.getForegroundPackage(applicationContext)
+        Log.d(TAG, "Check: tracked=$trackedPkg, openedAt=$openedAt, foreground=$foreground, blocked=$blockedApps, times=$blockTimes")
+
+        // If a blocked app is in the foreground but not yet tracked, start tracking it automatically.
+        // This handles apps opened from recents, notifications, other apps, etc.
+        if (foreground != null && foreground in blockedApps && (trackedPkg != foreground || openedAt == 0L)) {
+            Log.d(TAG, "Detected blocked app $foreground in foreground without tracking, auto-tracking now")
+            repository.markBlockedAppOpened(foreground)
+            overlayLaunched = false
+            return // Let the next check cycle handle the timer
+        }
 
         if (trackedPkg == null || openedAt == 0L) {
             overlayLaunched = false
@@ -132,7 +143,6 @@ class BlockedAppMonitorService : Service() {
         if (elapsed < allowedMs) return
 
         // Time is up
-        val foreground = ForegroundAppDetector.getForegroundPackage(applicationContext)
         Log.d(TAG, "Time up! Foreground: $foreground, tracked: $trackedPkg")
 
         if (foreground == trackedPkg) {
