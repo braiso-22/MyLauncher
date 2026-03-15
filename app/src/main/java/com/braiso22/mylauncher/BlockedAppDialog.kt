@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,13 +66,13 @@ fun BlockedAppDialog(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (!ready) {
-                    Text(text = "Esta app está bloqueada. Espera para poder abrirla.")
+                    Text(text = stringResource(R.string.app_is_blocked))
                     LinearProgressIndicator(
                         progress = { animatedProgress },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
-                    Text(text = "Escribe el siguiente código para continuar:")
+                    Text(text = stringResource(R.string.enter_code))
                     Text(
                         text = captchaCode,
                         fontSize = 28.sp,
@@ -85,7 +86,7 @@ fun BlockedAppDialog(
                         value = userInput,
                         onValueChange = { userInput = it },
                         singleLine = true,
-                        label = { Text("Código") },
+                        label = { Text(stringResource(R.string.code)) },
                         isError = userInput.isNotEmpty() && !inputMatches,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -97,12 +98,12 @@ fun BlockedAppDialog(
                 onClick = onEnter,
                 enabled = ready && inputMatches,
             ) {
-                Text("Entrar")
+                Text(stringResource(R.string.enter))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Cancelar")
+                Text(stringResource(R.string.cancel))
             }
         },
     )
@@ -120,6 +121,3 @@ fun BlockedAppDialogPreview() {
         )
     }
 }
-
-
-

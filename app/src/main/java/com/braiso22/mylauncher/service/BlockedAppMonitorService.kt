@@ -70,10 +70,10 @@ class BlockedAppMonitorService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Monitor de apps bloqueadas",
+            getString(R.string.monitor_service_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Monitorea si una app bloqueada está en uso"
+            description = getString(R.string.monitor_service_desc)
             setShowBadge(false)
         }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
@@ -81,8 +81,8 @@ class BlockedAppMonitorService : Service() {
 
     private fun buildNotification(): Notification {
         return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("MyLauncher activo")
-            .setContentText("Monitoreando apps bloqueadas")
+            .setContentTitle(getString(R.string.notification_title))
+            .setContentText(getString(R.string.notification_text))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
             .build()
@@ -158,6 +158,3 @@ class BlockedAppMonitorService : Service() {
         }
     }
 }
-
-
-

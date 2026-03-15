@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -223,17 +224,17 @@ fun AppListScreenContent(
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { onUpdateQuery("") }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
                     }
                 } else {
-                    Icon(Icons.Default.Search, contentDescription = "Search")
+                    Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp)
                 .focusRequester(focusRequester),
-            placeholder = { Text("Search apps") },
+            placeholder = { Text(stringResource(R.string.search_apps)) },
         )
 
         // Toggle button for blocked apps
@@ -243,8 +244,8 @@ fun AppListScreenContent(
                 onClick = onToggleShowBlocked,
                 label = {
                     Text(
-                        if (showingBlocked) "Ver todas las apps"
-                        else "Apps bloqueadas (${blocked.size})"
+                        if (showingBlocked) stringResource(R.string.view_all_apps)
+                        else stringResource(R.string.blocked_apps, blocked.size)
                     )
                 },
                 leadingIcon = {
@@ -318,7 +319,7 @@ fun AppContextMenu(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Opciones de la app") },
+        title = { Text(stringResource(R.string.app_options)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(
@@ -333,7 +334,7 @@ fun AppContextMenu(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isFavorite) "Quitar de favoritos" else "Añadir a favoritos",
+                        text = if (isFavorite) stringResource(R.string.remove_from_favorites) else stringResource(R.string.add_to_favorites),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -349,7 +350,7 @@ fun AppContextMenu(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isBlocked) "Desbloquear app" else "Bloquear app",
+                        text = if (isBlocked) stringResource(R.string.unblock_app) else stringResource(R.string.block_app),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -358,7 +359,7 @@ fun AppContextMenu(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar")
+                Text(stringResource(R.string.cancel))
             }
         },
         modifier = modifier
@@ -376,7 +377,7 @@ fun LastOpenedAppItem(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = "Última app abierta",
+            text = stringResource(R.string.last_opened_app),
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.primary,
@@ -441,7 +442,7 @@ fun AppItem(
         if (isFavorite) {
             Icon(
                 imageVector = Icons.Default.Star,
-                contentDescription = "Favorito",
+                contentDescription = stringResource(R.string.favorite),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp),
             )
