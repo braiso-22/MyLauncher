@@ -1,9 +1,12 @@
-<img alt="MyLauncher Header" src="./header_image.png" width="1920" height="1080"/>
-
 # 📱 MyLauncher
+
+<img alt="MyLauncher Header" src="./header_image.png" width="1920" height="1080"/>
 
 > [!TIP]
 > **[Read in English 🇺🇸](README.md)**
+
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/braiso-22/MyLauncher/total)
+
 
 **MyLauncher** es un lanzador de aplicaciones minimalista para Android diseñado para recuperar tu concentración y reducir el tiempo de pantalla. Sustituye el ruido visual de los lanzadores tradicionales por una interfaz limpia basada exclusivamente en texto.
 
