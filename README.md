@@ -6,6 +6,8 @@
 > [!TIP]
 > **[Leer en español 🇪🇸](README_es.md)**
 
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/braiso-22/MyLauncher/total)
+
 
 **MyLauncher** is a minimalist Android launcher designed to reclaim your focus and reduce screen time. Built with **Jetpack Compose**, it strips away the visual noise of traditional launchers, replacing icons with a clean, text-based interface.
 
