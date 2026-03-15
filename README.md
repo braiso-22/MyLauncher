@@ -1,6 +1,7 @@
+# 📱 MyLauncher
+
 <img alt="MyLauncher Header" src="./header_image.png" width="1920" height="1080"/>
 
-# 📱 MyLauncher
 
 > [!TIP]
 > **[Leer en español 🇪🇸](README_es.md)**
