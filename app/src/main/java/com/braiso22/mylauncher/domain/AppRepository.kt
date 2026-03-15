@@ -3,6 +3,7 @@ package com.braiso22.mylauncher.domain
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -37,6 +38,7 @@ class AppRepository private constructor(context: Context) {
         private val KEY_BLOCK_TIMES = stringPreferencesKey("block_times")
         private val KEY_BLOCKED_APP_OPENED_AT = longPreferencesKey("blocked_app_opened_at")
         private val KEY_BLOCKED_APP_OPENED_PKG = stringPreferencesKey("blocked_app_opened_pkg")
+        private val KEY_TUTORIAL_COMPLETED = booleanPreferencesKey("tutorial_completed")
     }
 
     private val dataStore = context.applicationContext.dataStore
@@ -53,6 +55,10 @@ class AppRepository private constructor(context: Context) {
     val lastOpenedPackage: StateFlow<String?> = dataStore.data
         .map { prefs -> prefs[KEY_LAST_OPENED] }
         .stateIn(scope, SharingStarted.Eagerly, null)
+
+    val tutorialCompleted: StateFlow<Boolean> = dataStore.data
+        .map { prefs -> prefs[KEY_TUTORIAL_COMPLETED] ?: false }
+        .stateIn(scope, SharingStarted.Eagerly, false)
 
     /** Map of packageName -> allowed minutes before overlay */
     val blockTimes: StateFlow<Map<String, Int>> = dataStore.data
@@ -80,6 +86,12 @@ class AppRepository private constructor(context: Context) {
     fun setLastOpened(packageName: String) {
         scope.launch {
             dataStore.edit { prefs -> prefs[KEY_LAST_OPENED] = packageName }
+        }
+    }
+
+    fun setTutorialCompleted(completed: Boolean) {
+        scope.launch {
+            dataStore.edit { prefs -> prefs[KEY_TUTORIAL_COMPLETED] = completed }
         }
     }
 

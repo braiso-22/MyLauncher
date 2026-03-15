@@ -6,10 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +34,7 @@ import java.util.Locale
 @Composable
 fun Greeting(
     repository: AppRepository,
+    onShowTutorial: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -90,6 +90,7 @@ fun Greeting(
                 launchFavoriteApp(context, app)
             }
         },
+        onSettingsClick = onShowTutorial,
         modifier = modifier,
     )
 }
@@ -100,51 +101,68 @@ fun GreetingContent(
     currentTime: String,
     currentDate: String,
     onAppClick: (AppInfo) -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // Reloj en la parte superior
-        Column(
+    Box(modifier = modifier.fillMaxSize()) {
+        // Settings button in the top right
+        IconButton(
+            onClick = onSettingsClick,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 48.dp, bottom = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
         ) {
-            Text(
-                text = currentTime,
-                fontSize = 64.sp,
-                fontWeight = FontWeight.Light,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = currentDate,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Settings",
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
             )
         }
 
-        // Favoritos ocupando el resto del espacio
-        if (favoriteApps.isNotEmpty()) {
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            LazyColumn(
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Reloj en la parte superior
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
-                    .padding(vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
+                    .padding(top = 48.dp, bottom = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(favoriteApps, key = { it.packageName }) { app ->
-                    FavoriteAppItem(
-                        app = app,
-                        onClick = { onAppClick(app) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                Text(
+                    text = currentTime,
+                    fontSize = 64.sp,
+                    fontWeight = FontWeight.Light,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = currentDate,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                )
+            }
+
+            // Favoritos ocupando el resto del espacio
+            if (favoriteApps.isNotEmpty()) {
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                ) {
+                    items(favoriteApps, key = { it.packageName }) { app ->
+                        FavoriteAppItem(
+                            app = app,
+                            onClick = { onAppClick(app) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
         }
@@ -207,6 +225,7 @@ private fun GreetingContentPreview() {
                 currentTime = "14:30",
                 currentDate = "viernes, 14 marzo",
                 onAppClick = {},
+                onSettingsClick = {},
                 modifier = Modifier.padding(paddingValues)
             )
         }

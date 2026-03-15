@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.braiso22.mylauncher.domain.AppRepository
 import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
 
@@ -19,30 +20,41 @@ import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
 fun LauncherPager(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val repository = remember { AppRepository.getInstance(context) }
+    val tutorialCompleted by repository.tutorialCompleted.collectAsStateWithLifecycle()
 
-    val pagerState = rememberPagerState(
-        initialPage = 0,
-        pageCount = { 2 },
-    )
+    if (!tutorialCompleted) {
+        TutorialScreen(
+            onFinishTutorial = { repository.setTutorialCompleted(true) },
+            modifier = modifier
+        )
+    } else {
+        val pagerState = rememberPagerState(
+            initialPage = 0,
+            pageCount = { 2 },
+        )
 
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        if (pagerState.currentPage != 0) {
-            pagerState.requestScrollToPage(0)
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+            if (pagerState.currentPage != 0) {
+                pagerState.requestScrollToPage(0)
+            }
         }
-    }
 
-    HorizontalPager(
-        state = pagerState,
-        modifier = modifier.fillMaxSize(),
-    ) { page ->
-        when (page) {
-            0 -> Greeting(repository = repository)
-            1 -> AppListScreen(
-                repository = repository,
-                context = context,
-                isActive = pagerState.currentPage == 1,
-                modifier = Modifier,
-            )
+        HorizontalPager(
+            state = pagerState,
+            modifier = modifier.fillMaxSize(),
+        ) { page ->
+            when (page) {
+                0 -> Greeting(
+                    repository = repository,
+                    onShowTutorial = { repository.setTutorialCompleted(false) }
+                )
+                1 -> AppListScreen(
+                    repository = repository,
+                    context = context,
+                    isActive = pagerState.currentPage == 1,
+                    modifier = Modifier,
+                )
+            }
         }
     }
 }
