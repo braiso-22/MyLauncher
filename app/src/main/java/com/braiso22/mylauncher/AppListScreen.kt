@@ -9,23 +9,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.braiso22.mylauncher.domain.AppRepository
 import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
@@ -166,6 +164,8 @@ fun AppListScreenContent(
     var contextMenuApp by remember { mutableStateOf<AppInfo?>(null) }
     // App for which the block time picker is shown
     var blockTimePickerApp by remember { mutableStateOf<AppInfo?>(null) }
+    // Whether to show the about project dialog
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -215,6 +215,10 @@ fun AppListScreenContent(
         )
     }
 
+    if (showAboutDialog) {
+        AboutProjectDialog(onDismiss = { showAboutDialog = false })
+    }
+
     Column(modifier) {
         OutlinedTextField(
             value = searchQuery,
@@ -222,7 +226,10 @@ fun AppListScreenContent(
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { onUpdateQuery("") }) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.clear)
+                        )
                     }
                 } else {
                     Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
@@ -237,24 +244,37 @@ fun AppListScreenContent(
 
         // Toggle button for blocked apps
         if (blocked.isNotEmpty()) {
-            FilterChip(
-                selected = showingBlocked,
-                onClick = onToggleShowBlocked,
-                label = {
-                    Text(
-                        if (showingBlocked) stringResource(R.string.view_all_apps)
-                        else stringResource(R.string.blocked_apps, blocked.size)
-                    )
-                },
-                leadingIcon = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                FilterChip(
+                    selected = showingBlocked,
+                    onClick = onToggleShowBlocked,
+                    label = {
+                        Text(
+                            if (showingBlocked) stringResource(R.string.view_all_apps)
+                            else stringResource(R.string.blocked_apps, blocked.size)
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (showingBlocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                )
+                IconButton(onClick = { showAboutDialog = true }) {
                     Icon(
-                        imageVector = if (showingBlocked) Icons.Default.LockOpen else Icons.Default.Lock,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
+                        imageVector = Icons.Default.Info,
+                        contentDescription = stringResource(R.string.info_about_project),
                     )
-                },
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            )
+                }
+            }
         }
 
         LazyColumn(
@@ -307,6 +327,87 @@ fun AppListScreenContent(
 // ── Componentes reutilizables ─────────────────────────────────────────────────
 
 @Composable
+fun AboutProjectDialog(
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val paypalUrl = "https://www.paypal.com/paypalme/braiso22"
+    val githubUrl = "https://github.com/braiso-22"
+    val email = "braisfv22@gmail.com"
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.about_project_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.about_project_message))
+                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+
+                    TextButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, paypalUrl.toUri())
+                            context.startActivity(intent)
+                        },
+                    ) {
+                        Text(
+                            text = stringResource(R.string.paypal),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 14.sp,
+                        )
+                    }
+
+                    TextButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, githubUrl.toUri())
+                            context.startActivity(intent)
+                        },
+                    ) {
+                        Text(
+                            text = stringResource(R.string.github),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 14.sp,
+                        )
+                    }
+
+
+                    TextButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = "mailto:$email".toUri()
+                            }
+                            try {
+                                context.startActivity(
+                                    Intent.createChooser(
+                                        intent,
+                                        "Send email"
+                                    )
+                                )
+                            } catch (e: Exception) {
+                                // Handle case where no email app is installed
+                            }
+                        },
+                    ) {
+                        Text(
+                            text = email,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.close))
+            }
+        },
+        modifier = modifier
+    )
+}
+
+@Composable
 fun AppContextMenu(
     isFavorite: Boolean,
     isBlocked: Boolean,
@@ -332,7 +433,9 @@ fun AppContextMenu(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isFavorite) stringResource(R.string.remove_from_favorites) else stringResource(R.string.add_to_favorites),
+                        text = if (isFavorite) stringResource(R.string.remove_from_favorites) else stringResource(
+                            R.string.add_to_favorites
+                        ),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -348,7 +451,9 @@ fun AppContextMenu(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isBlocked) stringResource(R.string.change_block_time) else stringResource(R.string.block_app),
+                        text = if (isBlocked) stringResource(R.string.change_block_time) else stringResource(
+                            R.string.block_app
+                        ),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -459,7 +564,11 @@ fun AppListScreenContentPreview() {
     val sampleApps = persistentListOf(
         AppInfo("Chrome", "com.android.chrome", "com.google.android.apps.chrome.Main"),
         AppInfo("Spotify", "com.spotify.music", "com.spotify.MainActivity"),
-        AppInfo("Instagram (bloqueada)", "com.instagram.android", "com.instagram.android.MainActivity"),
+        AppInfo(
+            "Instagram (bloqueada)",
+            "com.instagram.android",
+            "com.instagram.android.MainActivity"
+        ),
         AppInfo("WhatsApp", "com.whatsapp", "com.whatsapp.Main"),
     )
     val lastOpened = AppInfo(

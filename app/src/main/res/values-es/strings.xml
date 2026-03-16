@@ -8,7 +8,7 @@
     <string name="app_options">Opciones de la app</string>
     <string name="remove_from_favorites">Quitar de favoritos</string>
     <string name="add_to_favorites">Añadir a favoritos</string>
-    <string name="unblock_app">Desbloquear app</string>
+    <string name="change_block_time">Cambiar tiempo de bloqueo</string>
     <string name="block_app">Bloquear app</string>
     <string name="cancel">Cancelar</string>
     <string name="last_opened_app">Última app abierta</string>
@@ -42,4 +42,8 @@
     <string name="app_blocked">App bloqueada</string>
     <string name="time_is_up">Se acabó el tiempo.\nDebes cerrar esta aplicación.</string>
     <string name="close_app">Cerrar app</string>
+    <string name="info_about_project">Sobre este proyecto</string>
+    <string name="about_project_title">Sobre este proyecto</string>
+    <string name="about_project_message">Este es un proyecto personal que estoy desarrollando en mi tiempo libre. No recibo ningún pago por ello.\n\nSi quieres apoyarme o compartir tus ideas, puedes hacerlo a través de:</string>
+    <string name="close">Cerrar</string>
 </resources>
