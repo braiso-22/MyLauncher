@@ -84,6 +84,7 @@ fun AppListScreen(
 
     val favorites by repository.favorites.collectAsStateWithLifecycle()
     val blocked by repository.blocked.collectAsStateWithLifecycle()
+    val blockTimes by repository.blockTimes.collectAsStateWithLifecycle()
     val lastOpenedPackage by repository.lastOpenedPackage.collectAsStateWithLifecycle()
 
     val lastOpenedApp = remember(lastOpenedPackage, allApps) {
@@ -120,10 +121,10 @@ fun AppListScreen(
         filteredApps = filteredApps,
         favorites = favorites.toImmutableSet(),
         blocked = blocked.toImmutableSet(),
+        blockTimes = blockTimes.toImmutableMap(),
         lastOpenedApp = lastOpenedApp,
         onToggleFavorite = { repository.toggleFavorite(it) },
         onBlockApp = { pkg, minutes -> repository.blockApp(pkg, minutes) },
-        onUnblockApp = { pkg -> repository.unblockApp(pkg) },
         onLaunchApp = { app ->
             repository.setLastOpened(app.packageName)
             val launchIntent = Intent(Intent.ACTION_MAIN).apply {
@@ -150,10 +151,10 @@ fun AppListScreenContent(
     filteredApps: ImmutableList<AppInfo>,
     favorites: ImmutableSet<String>,
     blocked: ImmutableSet<String>,
+    blockTimes: ImmutableMap<String, Int>,
     lastOpenedApp: AppInfo?,
     onToggleFavorite: (String) -> Unit,
     onBlockApp: (packageName: String, minutes: Int) -> Unit,
-    onUnblockApp: (packageName: String) -> Unit,
     onLaunchApp: (AppInfo) -> Unit,
     onBlockedAppEntered: (packageName: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -189,6 +190,7 @@ fun AppListScreenContent(
     blockTimePickerApp?.let { app ->
         BlockTimePickerDialog(
             appName = app.label,
+            initialMinutes = blockTimes[app.packageName] ?: 5,
             onConfirm = { minutes ->
                 onBlockApp(app.packageName, minutes)
                 blockTimePickerApp = null
@@ -207,11 +209,7 @@ fun AppListScreenContent(
             },
             onToggleBlock = {
                 contextMenuApp = null
-                if (app.packageName in blocked) {
-                    onUnblockApp(app.packageName)
-                } else {
-                    blockTimePickerApp = app
-                }
+                blockTimePickerApp = app
             },
             onDismiss = { contextMenuApp = null },
         )
@@ -345,12 +343,12 @@ fun AppContextMenu(
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = null,
-                        tint = if (isBlocked) MaterialTheme.colorScheme.error
+                        tint = if (isBlocked) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isBlocked) stringResource(R.string.unblock_app) else stringResource(R.string.block_app),
+                        text = if (isBlocked) stringResource(R.string.change_block_time) else stringResource(R.string.block_app),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -479,10 +477,10 @@ fun AppListScreenContentPreview() {
                 filteredApps = sampleApps,
                 favorites = sampleFavorites,
                 blocked = sampleBlocked,
+                blockTimes = persistentMapOf(),
                 lastOpenedApp = lastOpened,
                 onToggleFavorite = {},
                 onBlockApp = { _, _ -> },
-                onUnblockApp = {},
                 onLaunchApp = {},
                 onBlockedAppEntered = {},
                 modifier = Modifier.padding(padding),

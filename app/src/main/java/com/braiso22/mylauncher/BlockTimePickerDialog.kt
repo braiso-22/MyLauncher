@@ -14,11 +14,12 @@ import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
 @Composable
 fun BlockTimePickerDialog(
     appName: String,
+    initialMinutes: Int = 5,
     onConfirm: (minutes: Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val options = listOf(1, 5, 10)
-    var selectedMinutes by remember { mutableIntStateOf(5) }
+    var selectedMinutes by remember { mutableIntStateOf(initialMinutes) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
