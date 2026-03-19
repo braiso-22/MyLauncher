@@ -20,6 +20,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.remember
@@ -37,18 +38,22 @@ import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
 
 /**
  * Transparent full-screen Activity shown on top of a blocked app
- * when the allowed usage time has elapsed.
- *
- * Using an Activity instead of WindowManager overlay because
- * TYPE_APPLICATION_OVERLAY has visibility issues on Android 12+.
+ * when the allowed usage time has elapsed or when opened from outside the launcher.
  */
 class OverlayActivity : ComponentActivity() {
 
+    enum class Reason {
+        TIME_UP,
+        NOT_FROM_LAUNCHER
+    }
+
     companion object {
         private const val TAG = "OverlayActivity"
+        private const val EXTRA_REASON = "extra_reason"
 
-        fun launch(context: Context) {
+        fun launch(context: Context, reason: Reason = Reason.TIME_UP) {
             val intent = Intent(context, OverlayActivity::class.java).apply {
+                putExtra(EXTRA_REASON, reason.name)
                 addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK
                             or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -61,7 +66,9 @@ class OverlayActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate - showing overlay")
+        val reasonName = intent.getStringExtra(EXTRA_REASON) ?: Reason.TIME_UP.name
+        val reason = Reason.valueOf(reasonName)
+        Log.d(TAG, "onCreate - showing overlay for $reason")
 
         // Make activity non-dismissable
         setFinishOnTouchOutside(false)
@@ -76,7 +83,10 @@ class OverlayActivity : ComponentActivity() {
 
         setContent {
             MyLauncherTheme {
-                OverlayContent(::closeAndGoHome)
+                OverlayContent(
+                    reason = reason,
+                    closeAndGoHome = ::closeAndGoHome
+                )
             }
         }
     }
@@ -99,6 +109,7 @@ class OverlayActivity : ComponentActivity() {
 
 @Composable
 fun OverlayContent(
+    reason: OverlayActivity.Reason,
     closeAndGoHome: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -126,19 +137,26 @@ fun OverlayContent(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Warning,
+                    imageVector = if (reason == OverlayActivity.Reason.TIME_UP) Icons.Default.Warning else Icons.Default.Block,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(48.dp),
                 )
                 Text(
-                    text = stringResource(R.string.app_blocked),
+                    text = stringResource(
+                        if (reason == OverlayActivity.Reason.TIME_UP) R.string.app_blocked
+                        else R.string.only_launcher_allowed_title
+                    ),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
                 )
                 Text(
-                    text = stringResource(R.string.time_is_up),
+                    text = stringResource(
+                        if (reason == OverlayActivity.Reason.TIME_UP) R.string.time_is_up
+                        else R.string.only_launcher_allowed_message
+                    ),
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
@@ -173,10 +191,25 @@ fun OverlayContentPreview() {
                     .padding(it)
                     .fillMaxSize()
             ) {
-                OverlayContent({})
+                OverlayContent(OverlayActivity.Reason.TIME_UP, {})
             }
         }
     }
 }
 
-
+@Suppress("ModifierRequired")
+@PreviewLightDark
+@Composable
+fun OverlayContentNotFromLauncherPreview() {
+    MyLauncherTheme {
+        Scaffold {
+            Column(
+                modifier = Modifier
+                    .padding(it)
+                    .fillMaxSize()
+            ) {
+                OverlayContent(OverlayActivity.Reason.NOT_FROM_LAUNCHER, {})
+            }
+        }
+    }
+}

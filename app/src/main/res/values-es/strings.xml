@@ -46,4 +46,6 @@
     <string name="about_project_title">Sobre este proyecto</string>
     <string name="about_project_message">Este es un proyecto personal que estoy desarrollando en mi tiempo libre. No recibo ningún pago por ello.\n\nSi quieres apoyarme o compartir tus ideas, puedes hacerlo a través de:</string>
     <string name="close">Cerrar</string>
+    <string name="only_launcher_allowed_title">Acceso Denegado</string>
+    <string name="only_launcher_allowed_message">Solo puedes abrir esta aplicación desde el launcher.</string>
 </resources>

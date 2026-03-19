@@ -433,9 +433,8 @@ fun AppContextMenu(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isFavorite) stringResource(R.string.remove_from_favorites) else stringResource(
-                            R.string.add_to_favorites
-                        ),
+                        text = if (isFavorite) stringResource(R.string.remove_from_favorites)
+                        else stringResource(R.string.add_to_favorites),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -451,9 +450,8 @@ fun AppContextMenu(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isBlocked) stringResource(R.string.change_block_time) else stringResource(
-                            R.string.block_app
-                        ),
+                        text = if (isBlocked) stringResource(R.string.change_block_time)
+                        else stringResource(R.string.block_app),
                         modifier = Modifier.weight(1f),
                     )
                 }

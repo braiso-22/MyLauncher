@@ -48,4 +48,6 @@
     <string name="paypal" translatable="false">PayPal</string>
     <string name="github" translatable="false">GitHub</string>
     <string name="close">Close</string>
+    <string name="only_launcher_allowed_title">Access Denied</string>
+    <string name="only_launcher_allowed_message">You can only open this app from the launcher.</string>
 </resources>
