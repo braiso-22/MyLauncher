@@ -104,69 +104,48 @@ class BlockedAppMonitorService : Service() {
     }
 
     private fun check() {
-        val trackedPkg = repository.blockedAppOpenedPkg.value
-        val openedAt = repository.blockedAppOpenedAt.value
         val blockedApps = repository.blocked.value
-        val blockTimes = repository.blockTimes.value
+        val unlockExpiries = repository.unlockExpiries.value
+        val now = System.currentTimeMillis()
 
-        // Always detect the current foreground app
+        // Clean up expired unlocks periodically
+        repository.clearExpiredUnlocks()
+
+        // Detect the current foreground app
         val foreground = ForegroundAppDetector.getForegroundPackage(applicationContext)
-        Log.d(TAG, "Check: tracked=$trackedPkg, openedAt=$openedAt, foreground=$foreground, blocked=$blockedApps")
+        Log.d(TAG, "Check: foreground=$foreground, blocked=$blockedApps, unlocks=$unlockExpiries")
 
-        // 1. If a blocked app is in the foreground but NOT tracked (not opened via launcher "Enter" flow),
-        // show the overlay immediately with the NOT_FROM_LAUNCHER reason.
-        if (foreground != null && foreground in blockedApps && (trackedPkg != foreground || openedAt == 0L)) {
-            Log.d(TAG, "Detected blocked app $foreground in foreground WITHOUT launcher tracking. Blocking.")
+        // If the foreground app is not blocked, nothing to do
+        if (foreground == null || foreground !in blockedApps) {
+            overlayLaunched = false
+            return
+        }
+
+        // Foreground app IS blocked — check if it has a valid unlock
+        val expiry = unlockExpiries[foreground]
+
+        if (expiry == null || expiry == 0L) {
+            // App was opened without going through the launcher unlock flow
+            Log.d(TAG, "Blocked app $foreground in foreground WITHOUT unlock. Blocking.")
             if (!overlayLaunched) {
                 overlayLaunched = true
-                OverlayActivity.launch(applicationContext, OverlayActivity.Reason.NOT_FROM_LAUNCHER)
+                OverlayActivity.launch(applicationContext, OverlayActivity.Reason.NOT_FROM_LAUNCHER, foreground)
             }
             return
         }
 
-        // 2. If nothing is tracked, or the tracked app is no longer blocked, just reset and return
-        if (trackedPkg == null || openedAt == 0L) {
-            overlayLaunched = false
-            return
-        }
-
-        if (trackedPkg !in blockedApps) {
-            Log.d(TAG, "Tracked app $trackedPkg no longer blocked, clearing")
-            repository.clearBlockedAppOpened()
-            overlayLaunched = false
-            return
-        }
-
-        // 3. Check if time is up for the tracked app
-        val allowedMinutes = blockTimes[trackedPkg] ?: 5
-        val allowedMs = allowedMinutes * 60_000L
-        val elapsed = System.currentTimeMillis() - openedAt
-
-        if (elapsed >= allowedMs) {
-            Log.d(TAG, "Time up for $trackedPkg! Foreground: $foreground")
-            if (foreground == trackedPkg) {
-                if (!overlayLaunched) {
-                    Log.d(TAG, "Launching OverlayActivity (TIME_UP) for $trackedPkg")
-                    overlayLaunched = true
-                    OverlayActivity.launch(applicationContext, OverlayActivity.Reason.TIME_UP)
-                }
-            } else {
-                Log.d(TAG, "User left $trackedPkg (time was up), clearing")
-                repository.clearBlockedAppOpened()
-                overlayLaunched = false
+        if (now >= expiry) {
+            // Unlock has expired — time is up
+            Log.d(TAG, "Time up for $foreground! Showing overlay.")
+            if (!overlayLaunched) {
+                overlayLaunched = true
+                OverlayActivity.launch(applicationContext, OverlayActivity.Reason.TIME_UP, foreground)
             }
             return
         }
 
-        // 4. If the user leaves the tracked app before time is up, clear tracking.
-        // This forces them to go through the launcher again to re-enter.
-        if (foreground != null && foreground != trackedPkg && foreground != packageName) {
-            // packageName is our own app. We don't want to clear if we are in the launcher or overlay.
-            // But we need to check if 'foreground' is a launcher activity or something.
-            // Simplified: if it's not the tracked app and not our launcher, they left.
-            Log.d(TAG, "User left $trackedPkg (switched to $foreground), clearing tracking")
-            repository.clearBlockedAppOpened()
-            overlayLaunched = false
-        }
+        // App is unlocked and time hasn't expired — allow usage
+        Log.d(TAG, "App $foreground unlocked until $expiry (${(expiry - now) / 1000}s remaining)")
+        overlayLaunched = false
     }
 }

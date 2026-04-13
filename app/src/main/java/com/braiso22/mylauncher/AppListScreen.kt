@@ -132,7 +132,10 @@ fun AppListScreen(
             }
             context.startActivity(launchIntent)
         },
-        onBlockedAppEntered = { pkg -> repository.markBlockedAppOpened(pkg) },
+        onBlockedAppEntered = { pkg ->
+            repository.markAppUnlocked(pkg, blockTimes[pkg] ?: 5)
+        },
+        isAppUnlocked = { pkg -> repository.isAppUnlocked(pkg) },
         isActive = isActive,
         modifier = modifier,
     )
@@ -155,6 +158,7 @@ fun AppListScreenContent(
     onBlockApp: (packageName: String, minutes: Int) -> Unit,
     onLaunchApp: (AppInfo) -> Unit,
     onBlockedAppEntered: (packageName: String) -> Unit,
+    isAppUnlocked: (packageName: String) -> Boolean,
     modifier: Modifier = Modifier,
     isActive: Boolean = false,
 ) {
@@ -307,7 +311,15 @@ fun AppListScreenContent(
                         app = app,
                         isFavorite = app.packageName in favorites,
                         isBlocked = true,
-                        onClick = { blockedDialogApp = app },
+                        onClick = {
+                            if (isAppUnlocked(app.packageName)) {
+                                // App still has a valid unlock — launch directly
+                                onBlockedAppEntered(app.packageName)
+                                onLaunchApp(app)
+                            } else {
+                                blockedDialogApp = app
+                            }
+                        },
                         onLongClick = { contextMenuApp = app },
                     )
                 } else {
@@ -590,6 +602,7 @@ fun AppListScreenContentPreview() {
                 onBlockApp = { _, _ -> },
                 onLaunchApp = {},
                 onBlockedAppEntered = {},
+                isAppUnlocked = { false },
                 modifier = Modifier.padding(padding),
             )
         }

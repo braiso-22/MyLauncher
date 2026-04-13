@@ -64,6 +64,7 @@ fun Greeting(
     }
 
     val blocked by repository.blocked.collectAsStateWithLifecycle()
+    val blockTimes by repository.blockTimes.collectAsStateWithLifecycle()
 
     // App cuyo dialog de bloqueo se muestra
     var blockedDialogApp by remember { mutableStateOf<AppInfo?>(null) }
@@ -73,7 +74,7 @@ fun Greeting(
             appName = app.label,
             onEnter = {
                 blockedDialogApp = null
-                repository.markBlockedAppOpened(app.packageName)
+                repository.markAppUnlocked(app.packageName, blockTimes[app.packageName] ?: 5)
                 launchFavoriteApp(context, app)
             },
             onDismiss = { blockedDialogApp = null },
@@ -86,7 +87,13 @@ fun Greeting(
         currentDate = currentDate,
         onAppClick = { app ->
             if (app.packageName in blocked) {
-                blockedDialogApp = app
+                if (repository.isAppUnlocked(app.packageName)) {
+                    // App still has a valid unlock — refresh expiry and launch directly
+                    repository.markAppUnlocked(app.packageName, blockTimes[app.packageName] ?: 5)
+                    launchFavoriteApp(context, app)
+                } else {
+                    blockedDialogApp = app
+                }
             } else {
                 launchFavoriteApp(context, app)
             }

@@ -5,7 +5,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -36,8 +35,7 @@ class AppRepository private constructor(context: Context) {
         private val KEY_BLOCKED = stringSetPreferencesKey("blocked")
         private val KEY_LAST_OPENED = stringPreferencesKey("last_opened")
         private val KEY_BLOCK_TIMES = stringPreferencesKey("block_times")
-        private val KEY_BLOCKED_APP_OPENED_AT = longPreferencesKey("blocked_app_opened_at")
-        private val KEY_BLOCKED_APP_OPENED_PKG = stringPreferencesKey("blocked_app_opened_pkg")
+        private val KEY_UNLOCK_EXPIRIES = stringPreferencesKey("unlock_expiries")
         private val KEY_TUTORIAL_COMPLETED = booleanPreferencesKey("tutorial_completed")
     }
 
@@ -73,15 +71,18 @@ class AppRepository private constructor(context: Context) {
         }
         .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
-    /** Package name of the blocked app currently being used (opened via "Entrar") */
-    val blockedAppOpenedPkg: StateFlow<String?> = dataStore.data
-        .map { prefs -> prefs[KEY_BLOCKED_APP_OPENED_PKG] }
-        .stateIn(scope, SharingStarted.Eagerly, null)
-
-    /** Timestamp when the blocked app was opened */
-    val blockedAppOpenedAt: StateFlow<Long> = dataStore.data
-        .map { prefs -> prefs[KEY_BLOCKED_APP_OPENED_AT] ?: 0L }
-        .stateIn(scope, SharingStarted.Eagerly, 0L)
+    /** Map of packageName -> expiry timestamp (millis) for temporarily unlocked apps */
+    val unlockExpiries: StateFlow<Map<String, Long>> = dataStore.data
+        .map { prefs ->
+            val raw = prefs[KEY_UNLOCK_EXPIRIES] ?: ""
+            if (raw.isBlank()) emptyMap()
+            else raw.split(",").mapNotNull { entry ->
+                val parts = entry.split(":")
+                if (parts.size == 2) parts[0] to (parts[1].toLongOrNull() ?: 0L)
+                else null
+            }.toMap()
+        }
+        .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     fun setLastOpened(packageName: String) {
         scope.launch {
@@ -132,30 +133,54 @@ class AppRepository private constructor(context: Context) {
                 map.remove(packageName)
                 prefs[KEY_BLOCK_TIMES] = serializeBlockTimes(map)
 
-                if (prefs[KEY_BLOCKED_APP_OPENED_PKG] == packageName) {
-                    prefs.remove(KEY_BLOCKED_APP_OPENED_PKG)
-                    prefs.remove(KEY_BLOCKED_APP_OPENED_AT)
-                }
+                // Also remove any active unlock for this app
+                val unlockRaw = prefs[KEY_UNLOCK_EXPIRIES] ?: ""
+                val unlockMap = parseUnlockExpiries(unlockRaw).toMutableMap()
+                unlockMap.remove(packageName)
+                prefs[KEY_UNLOCK_EXPIRIES] = serializeUnlockExpiries(unlockMap)
             }
         }
     }
 
-    /** Record that the user opened a blocked app (so the service starts its timer) */
-    fun markBlockedAppOpened(packageName: String) {
+    /** Record that the user unlocked a blocked app, setting an expiry timestamp */
+    fun markAppUnlocked(packageName: String, allowedMinutes: Int) {
         scope.launch {
             dataStore.edit { prefs ->
-                prefs[KEY_BLOCKED_APP_OPENED_PKG] = packageName
-                prefs[KEY_BLOCKED_APP_OPENED_AT] = System.currentTimeMillis()
+                val raw = prefs[KEY_UNLOCK_EXPIRIES] ?: ""
+                val map = parseUnlockExpiries(raw).toMutableMap()
+                map[packageName] = System.currentTimeMillis() + allowedMinutes * 60_000L
+                prefs[KEY_UNLOCK_EXPIRIES] = serializeUnlockExpiries(map)
             }
         }
     }
 
-    /** Clear the opened blocked app tracking */
-    fun clearBlockedAppOpened() {
+    /** Check if an app is currently unlocked (has a non-expired unlock) */
+    fun isAppUnlocked(packageName: String): Boolean {
+        val expiry = unlockExpiries.value[packageName] ?: return false
+        return expiry > System.currentTimeMillis()
+    }
+
+    /** Clear the unlock for a specific app */
+    fun clearUnlock(packageName: String) {
         scope.launch {
             dataStore.edit { prefs ->
-                prefs.remove(KEY_BLOCKED_APP_OPENED_PKG)
-                prefs.remove(KEY_BLOCKED_APP_OPENED_AT)
+                val raw = prefs[KEY_UNLOCK_EXPIRIES] ?: ""
+                val map = parseUnlockExpiries(raw).toMutableMap()
+                map.remove(packageName)
+                prefs[KEY_UNLOCK_EXPIRIES] = serializeUnlockExpiries(map)
+            }
+        }
+    }
+
+    /** Remove all expired unlocks from the map */
+    fun clearExpiredUnlocks() {
+        scope.launch {
+            dataStore.edit { prefs ->
+                val raw = prefs[KEY_UNLOCK_EXPIRIES] ?: ""
+                val map = parseUnlockExpiries(raw).toMutableMap()
+                val now = System.currentTimeMillis()
+                val cleaned = map.filterValues { it > now }
+                prefs[KEY_UNLOCK_EXPIRIES] = serializeUnlockExpiries(cleaned)
             }
         }
     }
@@ -170,6 +195,19 @@ class AppRepository private constructor(context: Context) {
     }
 
     private fun serializeBlockTimes(map: Map<String, Int>): String {
+        return map.entries.joinToString(",") { "${it.key}:${it.value}" }
+    }
+
+    private fun parseUnlockExpiries(raw: String): Map<String, Long> {
+        if (raw.isBlank()) return emptyMap()
+        return raw.split(",").mapNotNull { entry ->
+            val parts = entry.split(":")
+            if (parts.size == 2) parts[0] to (parts[1].toLongOrNull() ?: 0L)
+            else null
+        }.toMap()
+    }
+
+    private fun serializeUnlockExpiries(map: Map<String, Long>): String {
         return map.entries.joinToString(",") { "${it.key}:${it.value}" }
     }
 }

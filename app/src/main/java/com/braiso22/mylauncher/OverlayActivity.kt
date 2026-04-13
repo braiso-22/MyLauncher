@@ -50,10 +50,12 @@ class OverlayActivity : ComponentActivity() {
     companion object {
         private const val TAG = "OverlayActivity"
         private const val EXTRA_REASON = "extra_reason"
+        private const val EXTRA_PACKAGE = "extra_package"
 
-        fun launch(context: Context, reason: Reason = Reason.TIME_UP) {
+        fun launch(context: Context, reason: Reason = Reason.TIME_UP, packageName: String? = null) {
             val intent = Intent(context, OverlayActivity::class.java).apply {
                 putExtra(EXTRA_REASON, reason.name)
+                if (packageName != null) putExtra(EXTRA_PACKAGE, packageName)
                 addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK
                             or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -68,7 +70,8 @@ class OverlayActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val reasonName = intent.getStringExtra(EXTRA_REASON) ?: Reason.TIME_UP.name
         val reason = Reason.valueOf(reasonName)
-        Log.d(TAG, "onCreate - showing overlay for $reason")
+        val blockedPackage = intent.getStringExtra(EXTRA_PACKAGE)
+        Log.d(TAG, "onCreate - showing overlay for $reason, package=$blockedPackage")
 
         // Make activity non-dismissable
         setFinishOnTouchOutside(false)
@@ -85,16 +88,18 @@ class OverlayActivity : ComponentActivity() {
             MyLauncherTheme {
                 OverlayContent(
                     reason = reason,
-                    closeAndGoHome = ::closeAndGoHome
+                    closeAndGoHome = { closeAndGoHome(blockedPackage) }
                 )
             }
         }
     }
 
-    private fun closeAndGoHome() {
-        Log.d(TAG, "Closing overlay and going home")
+    private fun closeAndGoHome(blockedPackage: String?) {
+        Log.d(TAG, "Closing overlay and going home, clearing unlock for $blockedPackage")
         val repository = AppRepository.getInstance(applicationContext)
-        repository.clearBlockedAppOpened()
+        if (blockedPackage != null) {
+            repository.clearUnlock(blockedPackage)
+        }
 
         // Go to home screen (our launcher)
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
