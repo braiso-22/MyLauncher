@@ -20,6 +20,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.braiso22.mylauncher.data.TimeBankManager
 import com.braiso22.mylauncher.domain.AppRepository
 import com.braiso22.mylauncher.ui.theme.MyLauncherTheme
 import kotlinx.collections.immutable.ImmutableList
@@ -29,8 +30,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.time.Duration
 import java.util.Date
 import java.util.Locale
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun Greeting(
@@ -48,7 +51,7 @@ fun Greeting(
         while (true) {
             currentTime = getCurrentTime()
             currentDate = getCurrentDate()
-            delay(1000L)
+            delay(1L.seconds)
         }
     }
 
@@ -66,6 +69,17 @@ fun Greeting(
     val blocked by repository.blocked.collectAsStateWithLifecycle()
     val blockTimes by repository.blockTimes.collectAsStateWithLifecycle()
 
+    // Time bank (read-only display for now — reconciles on open and periodically)
+    val timeBankManager = remember { TimeBankManager.getInstance(context) }
+    val timeBankSnapshot by timeBankManager.snapshot.collectAsStateWithLifecycle()
+    @Suppress("EffectKeys")
+    LaunchedEffect(Unit) {
+        while (true) {
+            timeBankManager.refresh()
+            delay(15L.seconds)
+        }
+    }
+
     // App cuyo dialog de bloqueo se muestra
     var blockedDialogApp by remember { mutableStateOf<AppInfo?>(null) }
 
@@ -81,10 +95,20 @@ fun Greeting(
         )
     }
 
+    val balanceText = stringResource(
+        R.string.time_bank_balance,
+        formatBankDuration(timeBankSnapshot.balance),
+    )
+    val earnText = timeBankSnapshot.earnableNow
+        .takeIf { !it.isZero && !it.isNegative }
+        ?.let { stringResource(R.string.time_bank_earn_now, formatBankDuration(it)) }
+
     GreetingContent(
         favoriteApps = favoriteApps,
         currentTime = currentTime,
         currentDate = currentDate,
+        balanceText = balanceText,
+        earnText = earnText,
         onAppClick = { app ->
             if (app.packageName in blocked) {
                 if (repository.isAppUnlocked(app.packageName)) {
@@ -108,6 +132,8 @@ fun GreetingContent(
     favoriteApps: ImmutableList<AppInfo>,
     currentTime: String,
     currentDate: String,
+    balanceText: String,
+    earnText: String?,
     onAppClick: (AppInfo) -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -151,6 +177,20 @@ fun GreetingContent(
                     fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                 )
+                Text(
+                    text = balanceText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                if (earnText != null) {
+                    Text(
+                        text = earnText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                    )
+                }
             }
 
             // Favoritos ocupando el resto del espacio
@@ -210,6 +250,14 @@ private fun launchFavoriteApp(context: Context, app: AppInfo) {
     context.startActivity(intent)
 }
 
+/** Formats a bank duration as e.g. "1h 5m", "12m" or "0m" (rounded down to whole minutes). */
+fun formatBankDuration(duration: Duration): String {
+    val totalMinutes = duration.coerceAtLeast(Duration.ZERO).toMinutes()
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+}
+
 fun getCurrentTime(): String =
     SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
 
@@ -232,6 +280,8 @@ private fun GreetingContentPreview() {
                 favoriteApps = sampleApps,
                 currentTime = "14:30",
                 currentDate = "viernes, 14 marzo",
+                balanceText = "Saldo: 12m",
+                earnText = "+7m si desbloqueas ahora",
                 onAppClick = {},
                 onSettingsClick = {},
                 modifier = Modifier.padding(paddingValues)

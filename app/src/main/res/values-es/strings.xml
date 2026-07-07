@@ -48,4 +48,7 @@
     <string name="close">Cerrar</string>
     <string name="only_launcher_allowed_title">Acceso Denegado</string>
     <string name="only_launcher_allowed_message">Solo puedes abrir esta aplicación desde el launcher.</string>
+    <string name="time_bank_balance">Saldo: %1$s</string>
+    <string name="time_bank_earn_now">+%1$s si desbloqueas ahora</string>
+    <string name="time_bank_none">Aún no tienes tiempo acumulado</string>
 </resources>

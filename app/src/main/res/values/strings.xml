@@ -50,4 +50,7 @@
     <string name="close">Close</string>
     <string name="only_launcher_allowed_title">Access Denied</string>
     <string name="only_launcher_allowed_message">You can only open this app from the launcher.</string>
+    <string name="time_bank_balance">Balance: %1$s</string>
+    <string name="time_bank_earn_now">+%1$s if you unlock now</string>
+    <string name="time_bank_none">No banked time yet</string>
 </resources>
